@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src=""></script>
+</head>
+<body>
+    <canvas id="canvas" width="500" height="500" style="background-color:red;"></canvas>
+</body>
+</html>
+<script>
+    var canvas=document.getElementById('canvas');
+    var context=canvas.getContext('2d');
+    
+    var circle={                         //创建一个圆形对象
+        x:250,
+        y:250,
+        radius:50,
+        direction:'right',
+        
+        move:function(){
+            if(this.direction==='right'){
+                if(this.x<=440)
+                {
+                   this.x+=5;	
+                }
+                else
+                {
+                    this.direction='left';
+                }
+            }else{
+                if(this.x>=60)
+                {
+                    this.x-=5;
+                }
+                else
+                {
+                    this.direction='right';
+                }
+            }
+        },
+        
+        draw:function(){
+            context.beginPath();
+            context.arc(this.x,this.y,this.radius,0,2*Math.PI,false);
+            context.closePath();
+            context.fillStyle='blue';
+            context.fill();
+        }
+    };
+    
+    function animation()
+    {
+       circle.move();    //数据移动
+       context.clearRect(0,0,canvas.width,canvas.height);  //清除
+       circle.draw();   //绘制
+       setTimeout(function(){
+        
+         requestAnimationFrame(animation)
+       },200)
+      
+       //循环
+    }
+    circle.draw();
+    animation();
+    </script>

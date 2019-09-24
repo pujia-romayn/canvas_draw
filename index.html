@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>canvas</title>
+    <style>
+        #oz {
+            background: #808080;
+            position: absolute;
+            left: 100px;
+
+        }
+    </style>
+</head>
+
+<body>
+
+    <button onclick="getData()">getData</button>
+    <br>
+    <button onclick="resetDefaultScale()">resetScale</button>
+    <br>
+    <button onclick="toBlob()">toBlob</button>
+    <canvas id="oz" width="1000" height="800"></canvas>
+
+</body>
+
+</html>
+<script>
+    //Blob、IndexedDB、requestAnimationFrame
+    function getData() {
+        return { data: { task: data, links: links } }
+    }
+
+    function resetDefaultScale() {
+        ctx.scale(1 / viewScale, 1 / viewScale);
+        viewScale = 1;
+        drawDepart()
+    }
+
+    function toBlob() {
+        canvas.toBlob(function (blob) {
+            var dataURL = canvas.toDataURL();
+            var url = URL.createObjectURL(blob);
+        debugger
+            let data = new FormData();
+            data.append("image", blob);
+
+
+            let xhr = new XMLHttpRequest();
+            xhr.onload = function () {
+
+            }
+            xhr.open('POST', './..', true);
+            xhr.send(data);
+        })
+    }
+    // 分割线---------------------------------------------------
+    var isMoving = false, canLine = false, startLine = false, findEndLine = false;
+
+    var bgColor = "red"
+    var textSize = 18;
+    //连线方位
+    var startLinkPos = '';
+    var endLinkPos = '';
+
+    var downItem = '', lineStartItem, lineEndItem;
+    var initX, initY;
+    var lineRadius = 4;
+
+    var lineEndX, lineEndY;
+
+    //缩放
+    var viewScale = 1;
+    var scaleUnit = 0.1;
+
+    //初始化画布位置
+    var translateX = 0;
+    var translateY = 0;
+    var translateInitX = 0;
+    var translateInitY = 0;
+
+
+    var data = [
+        { id: "1", name: "总经理3432432", x: 200, y: 80, width: 80, height: 30 },
+        { id: "2", name: "总经办", x: 400, y: 160, width: 80, height: 30 },
+        { id: "3", name: "开发部", x: 0, y: 240, width: 80, height: 30 },
+        { id: "4", name: "市场部", x: 0, y: 320, width: 80, height: 30 },
+        { id: "5", name: "实施部", x: 0, y: 400, width: 80, height: 30 },
+        { id: "6", name: "产品部门", x: 0, y: 480, width: 80, height: 30 },
+        { id: "7", name: "测试部门", x: 0, y: 580, width: 80, height: 30 }
+    ]
+    var obData = data.reduce((res, item) => (res[item.id] = item, res), {});
+
+    var links = [
+        { fromId: "1", toId: "2", startLinkPosi: "right", endLinkPosi: "top" }
+    ]
+    var rightData = [];
+    var canvas = document.getElementById("oz");
+    var ctx = canvas.getContext('2d');
+    console.dir(ctx);
+   
+    let drawDepart = () => {
+
+        ctx.clearRect(0, 0, canvas.width * (1 / viewScale), canvas.height * (1 / viewScale));
+
+        data.forEach(item => {
+            //矩形
+            ctx.fillStyle = bgColor;
+            ctx.fillRect((item.x || 0) + translateX, (item.y || 0) + translateY, item.width || 80, item.height || 30);
+
+
+            //文本
+            ctx.fillStyle = '#fff';
+            ctx.font = textSize + "px Arial";
+            ctx.textBaseline = "middle";
+          
+            ctx.fillText(item.name, item.x + translateX, item.y + 15 + translateY, item.width); //高度居中 矩形/2
+
+            if (canLine && lineStartItem && lineStartItem.id == item.id) {
+
+                ctx.beginPath();
+                ctx.arc(item.x + item.width / 2 + translateX, item.y - lineRadius + translateY, lineRadius, 0, 2 * Math.PI);
+                lineStartItem.circleX
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(item.x + item.width + lineRadius + translateX, item.y + item.height / 2 + translateY, lineRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(item.x + item.width / 2 + translateX, item.y + item.height + lineRadius + translateY, lineRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(item.x - lineRadius + translateX, item.y + item.height / 2 + translateY, lineRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+
+            }
+
+            if (findEndLine && lineStartItem && lineEndItem.id == item.id) {
+
+                ctx.beginPath();
+                ctx.arc(item.x + item.width / 2 + translateX, item.y - lineRadius + translateY, lineRadius, 0, 2 * Math.PI);
+                lineStartItem.circleX
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(item.x + item.width + lineRadius + translateX, item.y + item.height / 2 + translateY, lineRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(item.x + item.width / 2 + translateX, item.y + item.height + lineRadius + translateY, lineRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(item.x - lineRadius + translateX, item.y + item.height / 2 + translateY, lineRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+
+
+        });
+
+        links.forEach(item => {
+            let linkFromItem = obData[item.fromId];
+            let linkToItem = obData[item.toId];
+
+            let linkFromPosi = calcLinkPosi(linkFromItem, item.startLinkPosi)
+            let linkToPosi = calcLinkPosi(linkToItem, item.endLinkPosi)
+            ctx.beginPath();
+            ctx.moveTo(linkFromPosi.x + translateX, linkFromPosi.y + translateY);
+            ctx.lineTo(linkToPosi.x + translateX, linkToPosi.y + translateY);
+            ctx.stroke();
+
+            //可以跟着加箭头+曲线(编写一套曲线逻辑);
+
+        });
+
+        if (startLine) {
+            ctx.moveTo(startX / viewScale, startY / viewScale);
+            ctx.lineTo(lineEndX / viewScale, lineEndY / viewScale);
+            ctx.stroke();
+        }
+
+    }
+
+    function handleMousedown(event) {
+        startX = event.offsetX;
+        startY = event.offsetY;
+        //点中连线
+        if (canLine && lineStartItem) {
+            let _startLinkPos = getCircleInfo(startX, startY, lineStartItem, lineRadius, translateX, translateY);
+            if (_startLinkPos != "") {
+                startLinkPos = _startLinkPos
+                startLine = true;
+                return false;
+            }
+        }
+
+        data.forEach(item => {
+            isMoving = true;
+            //点中矩形
+            if (startX >= (item.x + translateX) * viewScale && startX <= (item.x + item.width + translateX) * viewScale && startY >= (item.y + translateY) * viewScale && startY <= (item.y + item.height + translateY) * viewScale) {
+                downItem = item;
+                initX = parseInt(downItem.x.toString()) * viewScale;
+                initY = parseInt(downItem.y.toString()) * viewScale;
+            }
+        })
+    }
+    function handleMousemove(event) {
+        moveX = event.offsetX;
+        moveY = event.offsetY;
+        //拖动
+        if (isMoving) {
+            var moveWidth = moveX - startX;
+            var moveHeight = moveY - startY;
+
+            if (downItem != '') {
+                downItem.x = (initX + moveWidth) / viewScale;
+                downItem.y = (initY + moveHeight) / viewScale;
+                drawDepart();
+
+            }
+            //如果采用所有元素加move 会破坏数据
+            else {
+                translateX = (translateInitX + moveWidth) / viewScale;
+                translateY = (translateInitY + moveHeight) / viewScale;
+                drawDepart();
+            }
+        }
+
+        //开始连线 移动时判断
+        else if (startLine) {
+            lineEndX = event.offsetX;
+            lineEndY = event.offsetY;
+
+            findEndLine = false;
+
+            data.forEach(item => {
+                if (lineEndX >= (item.x - lineRadius * 2 + translateX) * viewScale && lineEndX <= (item.x + item.width + lineRadius * 2 + translateX) * viewScale && lineEndY >= (item.y - lineRadius * 2 + translateY) * viewScale && lineEndY <= (item.y + item.height + lineRadius * 2 + translateY) * viewScale) {
+                    lineEndItem = item;
+                    findEndLine = true;
+                }
+
+            })
+            drawDepart();
+        }
+        //未开始连线 移动时 
+        else if (!startLine) {
+            canLine = false;
+            _startX = event.offsetX;
+            _startY = event.offsetY;
+
+            //判断data 换个方法 这个不能终止循环
+            data.forEach(item => {
+                if (_startX >= (item.x - lineRadius + translateX) * viewScale && _startX <= (item.x + item.width + lineRadius + translateX) * viewScale && _startY >= (item.y - lineRadius + translateY) * viewScale && _startY <= (item.y + item.height + lineRadius + translateY) * viewScale) {
+                    lineStartItem = item;
+                    canLine = true;
+                    drawDepart();
+                }
+            })
+            //判断link
+
+            //离开时取消连线点(如何不随时触发？)
+            if (!canLine) {
+                drawDepart();
+            }
+
+        }
+    }
+    function handleMouseup(event) {
+
+        //放开时建立连接
+        upEventX = event.offsetX;
+        upEventY = event.offsetY;
+        //放开时 判断是够选中圆点
+        if (findEndLine && lineEndItem) {
+            let _endLinkPos = getCircleInfo(upEventX, upEventY, lineEndItem, lineRadius, translateX, translateY);
+            if (_endLinkPos != "") {
+                endLinkPos = _endLinkPos;
+                //连接逻辑(按需写)
+                if (lineStartItem.id != lineEndItem.id) {
+                    //建立连接 
+                    links.push({ fromId: lineStartItem.id, toId: lineEndItem.id, startLinkPosi: startLinkPos, endLinkPosi: endLinkPos })
+                }
+            }
+        }
+
+        translateInitX = parseInt(translateX.toString()) * viewScale;
+        translateInitY = parseInt(translateY.toString()) * viewScale;
+
+        lineStartItem = '';
+        lineEndItem = '';
+        downItem = '';
+        isMoving = false;
+        canLine = false;
+        startLine = false;
+        findEndLine = false;
+
+        drawDepart();
+    }
+
+
+    function handleMouseWheel(event) {
+        let scaleInit = parseFloat((1 + (event.wheelDelta > 0 ? scaleUnit : -scaleUnit)).toFixed(1));
+
+        // 放大时init的值方大
+        changeInitVal(scaleInit)
+
+        viewScale = viewScale * scaleInit;
+
+        ctx.scale(scaleInit, scaleInit);
+        drawDepart()
+
+    }
+
+    //连线
+    // canvas.addEventListener("mouseenter", handleMouseenter.bind(this))
+    // canvas.addEventListener("mouseleave", handleMouseleave.bind(this))
+    //拖动
+    canvas.addEventListener("mousedown", handleMousedown.bind(this))
+    document.addEventListener('mousemove', handleMousemove.bind(this))
+    document.addEventListener('mouseup', handleMouseup.bind(this))
+
+    //滚轮
+    canvas.addEventListener("mousewheel", handleMouseWheel.bind(this))
+
+    drawDepart(data);
+    //  drawRight(rightData);
+
+    //判断点是否在圆中
+    function getCircleInfo(x, y, item, radius, tx, ty) {
+        let inCorcle = "";
+        if (Math.sqrt(Math.pow((x - (item.x + item.width / 2 + tx) * viewScale), 2) + Math.pow((y - (item.y - radius + ty) * viewScale), 2)) <= radius * viewScale) {
+            inCorcle = "top";
+        }
+        else if (Math.sqrt(Math.pow((x - (item.x + item.width + radius + tx) * viewScale), 2) + Math.pow((y - (item.y + item.height / 2 + ty) * viewScale), 2)) <= radius * viewScale) {
+            inCorcle = "right";
+        }
+        else if (Math.sqrt(Math.pow((x - (item.x + item.width / 2 + tx) * viewScale), 2) + Math.pow((y - (item.y + item.height + radius + ty) * viewScale), 2)) <= radius * viewScale) {
+            inCorcle = "bottom";
+        }
+        else if (Math.sqrt(Math.pow((x - (item.x - radius + tx) * viewScale)) + Math.pow((y - (item.y + item.height / 2 + ty) * viewScale), 2)) <= radius * viewScale) {
+            inCorcle = "left";
+        }
+        return inCorcle
+    }
+
+    function changeInitVal(zoom) {
+        // initX = initX * zoom;
+        // initY = initY * zoom;
+        translateInitX = translateInitX * zoom
+        translateInitY = translateInitY * zoom
+    }
+    function calcLinkPosi(item, type) {
+        var x = 0, y = 0;
+
+        switch (type) {
+            case "top":
+                x = item.x + item.width / 2;
+                y = item.y;
+                break;
+            case "right":
+                x = item.x + item.width;
+                y = item.y + item.height / 2;
+                break;
+            case "bottom":
+                x = item.x + item.width / 2;
+                y = item.y + item.height;
+                break;
+            case "left":
+                x = item.x;
+                y = item.y + item.height / 2;
+                break;
+            default:
+                break;
+        }
+
+
+        return { x: x, y: y }
+    }
+</script>
